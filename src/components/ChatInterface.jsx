@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperPlane, faRobot, faUser, faComments } from '@fortawesome/free-solid-svg-icons';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const ChatInterface = ({ chat, extractedText, onPageClick, apiKey, onUpdateMessages }) => {
   const [messages, setMessages] = useState(chat?.messages || []);
@@ -266,40 +268,29 @@ Answer:`;
             </div>
             <div style={{flex: 1, color: '#fff', lineHeight: '1.6', fontSize: '15px'}}>
               {message.role === 'assistant' ? (
-                parsePageReferences(message.content).map((part, idx) => (
-                  part.type === 'page-link' ? (
-                    <span
-                      key={idx}
-                      onClick={() => onPageClick(part.pageNumber)}
-                      style={{
-                        display: 'inline-block',
-                        background: 'linear-gradient(135deg, #ff7f00 0%, #ff5500 100%)',
-                        color: 'white',
-                        padding: '3px 10px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        fontSize: '13px',
-                        margin: '0 4px',
-                        boxShadow: '0 0 15px rgba(255, 127, 0, 0.3)',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.boxShadow = '0 0 25px rgba(255, 127, 0, 0.6)';
-                        e.target.style.transform = 'translateY(-2px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.boxShadow = '0 0 15px rgba(255, 127, 0, 0.3)';
-                        e.target.style.transform = 'translateY(0)';
-                      }}
-                      title={`Go to page ${part.pageNumber}`}
-                    >
-                      {part.content}
-                    </span>
-                  ) : (
-                    <span key={idx}>{part.content}</span>
-                  )
-                ))
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: ({node, ...props}) => <p style={{marginBottom: '12px'}} {...props} />,
+                    h1: ({node, ...props}) => <h1 style={{color: '#ff7f00', fontSize: '24px', fontWeight: 'bold', marginBottom: '12px'}} {...props} />,
+                    h2: ({node, ...props}) => <h2 style={{color: '#ff7f00', fontSize: '20px', fontWeight: 'bold', marginBottom: '10px'}} {...props} />,
+                    h3: ({node, ...props}) => <h3 style={{color: '#ff7f00', fontSize: '18px', fontWeight: 'bold', marginBottom: '8px'}} {...props} />,
+                    code: ({node, inline, ...props}) => inline 
+                      ? <code style={{background: 'rgba(255, 127, 0, 0.2)', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', color: '#ff7f00'}} {...props} />
+                      : <code style={{display: 'block', background: '#1a1a1a', padding: '12px', borderRadius: '8px', fontSize: '14px', overflowX: 'auto', border: '1px solid rgba(255, 127, 0, 0.2)', marginBottom: '12px'}} {...props} />,
+                    ul: ({node, ...props}) => <ul style={{marginLeft: '20px', marginBottom: '12px', listStyleType: 'disc'}} {...props} />,
+                    ol: ({node, ...props}) => <ol style={{marginLeft: '20px', marginBottom: '12px'}} {...props} />,
+                    li: ({node, ...props}) => <li style={{marginBottom: '6px'}} {...props} />,
+                    strong: ({node, ...props}) => <strong style={{color: '#ff7f00', fontWeight: 'bold'}} {...props} />,
+                    em: ({node, ...props}) => <em style={{color: '#ffaa55'}} {...props} />,
+                    a: ({node, ...props}) => <a style={{color: '#ff7f00', textDecoration: 'underline'}} {...props} />,
+                    blockquote: ({node, ...props}) => <blockquote style={{borderLeft: '4px solid #ff7f00', paddingLeft: '16px', marginLeft: '0', marginBottom: '12px', color: '#ccc'}} {...props} />,
+                  }}
+                >
+                  {message.content.replace(/\b[Pp]age\s+(\d+)\b/g, (match, pageNum) => {
+                    return `[${match}](#page-${pageNum})`;
+                  })}
+                </ReactMarkdown>
               ) : (
                 message.content
               )}
