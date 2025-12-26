@@ -75,23 +75,89 @@ const PDFViewer = ({ pdfFile, currentPage, onPageChange, extractedText }) => {
       </div>
 
       {numPages && (
-        <div className="flex items-center justify-between mt-6">
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: '24px',
+          gap: '16px'
+        }}>
           <button
             onClick={goToPrevPage}
             disabled={currentPage <= 1}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: currentPage > 1 
+                ? 'linear-gradient(135deg, #ff7f00 0%, #ff5500 100%)' 
+                : '#3d3d3d',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 24px',
+              color: 'white',
+              fontSize: '15px',
+              fontWeight: '600',
+              cursor: currentPage > 1 ? 'pointer' : 'not-allowed',
+              transition: 'all 0.3s ease',
+              boxShadow: currentPage > 1 ? '0 0 20px rgba(255, 127, 0, 0.3)' : 'none',
+              opacity: currentPage > 1 ? 1 : 0.5
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage > 1) {
+                e.target.style.boxShadow = '0 0 30px rgba(255, 127, 0, 0.6)';
+                e.target.style.transform = 'translateY(-2px)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage > 1) {
+                e.target.style.boxShadow = '0 0 20px rgba(255, 127, 0, 0.3)';
+                e.target.style.transform = 'translateY(0)';
+              }
+            }}
           >
             ← Previous
           </button>
           
-          <span className="text-gray-700 font-medium">
+          <span style={{
+            color: '#000',
+            fontWeight: '600',
+            fontSize: '16px',
+            background: 'rgba(255, 127, 0, 0.1)',
+            padding: '8px 20px',
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 127, 0, 0.3)'
+          }}>
             Page {currentPage} of {numPages}
           </span>
           
           <button
             onClick={goToNextPage}
             disabled={currentPage >= numPages}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: currentPage < numPages 
+                ? 'linear-gradient(135deg, #ff7f00 0%, #ff5500 100%)' 
+                : '#3d3d3d',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 24px',
+              color: 'white',
+              fontSize: '15px',
+              fontWeight: '600',
+              cursor: currentPage < numPages ? 'pointer' : 'not-allowed',
+              transition: 'all 0.3s ease',
+              boxShadow: currentPage < numPages ? '0 0 20px rgba(255, 127, 0, 0.3)' : 'none',
+              opacity: currentPage < numPages ? 1 : 0.5
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage < numPages) {
+                e.target.style.boxShadow = '0 0 30px rgba(255, 127, 0, 0.6)';
+                e.target.style.transform = 'translateY(-2px)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage < numPages) {
+                e.target.style.boxShadow = '0 0 20px rgba(255, 127, 0, 0.3)';
+                e.target.style.transform = 'translateY(0)';
+              }
+            }}
           >
             Next →
           </button>

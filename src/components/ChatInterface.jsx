@@ -193,7 +193,9 @@ Answer:`;
       <div style={{
         padding: '20px 30px',
         borderBottom: '1px solid rgba(255, 127, 0, 0.2)',
-        background: '#0d0d0d'
+        background: '#0d0d0d',
+        display: 'flex',
+        justifyContent: 'center'
       }}>
         <h2 style={{
           color: '#fff',

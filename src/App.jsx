@@ -92,7 +92,9 @@ function App() {
 
   // Save chats to localStorage
   useEffect(() => {
-    localStorage.setItem('all_chats', JSON.stringify(chats));
+    if (chats.length > 0) {
+      localStorage.setItem('all_chats', JSON.stringify(chats));
+    }
   }, [chats]);
 
   // Save current chat ID
