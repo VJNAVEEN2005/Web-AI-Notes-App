@@ -97,17 +97,6 @@ const PDFViewer = ({ pdfFile, currentPage, onPageChange, extractedText }) => {
           </button>
         </div>
       )}
-
-      {extractedText && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-3 text-gray-800">Extracted Text (Page {currentPage})</h3>
-          <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
-              {getCurrentPageText() || 'No text extracted from this page'}
-            </pre>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

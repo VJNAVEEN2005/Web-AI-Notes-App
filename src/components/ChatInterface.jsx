@@ -3,12 +3,26 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperPlane, faRobot, faUser } from '@fortawesome/free-solid-svg-icons';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const ChatInterface = ({ extractedText, onPageClick, apiKey }) => {
-  const [messages, setMessages] = useState([]);
+const ChatInterface = ({ chat, extractedText, onPageClick, apiKey, onUpdateMessages }) => {
+  const [messages, setMessages] = useState(chat?.messages || []);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [genAI, setGenAI] = useState(null);
   const messagesEndRef = useRef(null);
+
+  // Update messages when chat changes
+  useEffect(() => {
+    if (chat) {
+      setMessages(chat.messages || []);
+    }
+  }, [chat?.id]);
+
+  // Update parent component when messages change
+  useEffect(() => {
+    if (onUpdateMessages && messages.length > 0) {
+      onUpdateMessages(messages);
+    }
+  }, [messages]);
 
   useEffect(() => {
     if (apiKey) {
