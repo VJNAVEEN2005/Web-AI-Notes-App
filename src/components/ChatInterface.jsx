@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPaperPlane, faRobot, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faPaperPlane, faRobot, faUser, faComments } from '@fortawesome/free-solid-svg-icons';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const ChatInterface = ({ chat, extractedText, onPageClick, apiKey, onUpdateMessages }) => {
@@ -189,6 +189,26 @@ Answer:`;
       height: '100%',
       background: '#1a1a1a'
     }}>
+      {/* Chat Header */}
+      <div style={{
+        padding: '20px 30px',
+        borderBottom: '1px solid rgba(255, 127, 0, 0.2)',
+        background: '#0d0d0d'
+      }}>
+        <h2 style={{
+          color: '#fff',
+          fontSize: '20px',
+          fontWeight: '600',
+          margin: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <FontAwesomeIcon icon={faComments} style={{color: '#ff7f00'}} />
+          {chat?.title || 'Chat'}
+        </h2>
+      </div>
+
       {/* Messages Area */}
       <div style={{
         flex: 1,

@@ -36,7 +36,24 @@ function App() {
 
     if (savedPdfs) {
       try {
-        setPdfs(JSON.parse(savedPdfs));
+        const parsedPdfs = JSON.parse(savedPdfs);
+        // Recreate blob URLs from base64 data
+        const pdfsWithBlobs = parsedPdfs.map(pdf => {
+          if (pdf.fileData) {
+            // Convert base64 back to blob
+            const byteCharacters = atob(pdf.fileData);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            const blobUrl = URL.createObjectURL(blob);
+            return { ...pdf, fileBlob: blobUrl };
+          }
+          return pdf;
+        });
+        setPdfs(pdfsWithBlobs);
       } catch (error) {
         console.error('Error loading PDFs:', error);
       }
@@ -61,7 +78,16 @@ function App() {
 
   // Save PDFs to localStorage
   useEffect(() => {
-    localStorage.setItem('all_pdfs', JSON.stringify(pdfs));
+    if (pdfs.length > 0) {
+      // Store PDFs without blob URLs (use fileData instead)
+      const pdfsToSave = pdfs.map(pdf => {
+        const { fileBlob, ...pdfWithoutBlob } = pdf;
+        return pdfWithoutBlob;
+      });
+      localStorage.setItem('all_pdfs', JSON.stringify(pdfsToSave));
+    } else {
+      localStorage.removeItem('all_pdfs');
+    }
   }, [pdfs]);
 
   // Save chats to localStorage
@@ -87,12 +113,33 @@ function App() {
   const currentPdf = pdfs.find(pdf => pdf.id === currentPdfId);
   const currentChat = chats.find(chat => chat.id === currentChatId);
 
-  const handleUploadSuccess = (data) => {
+  const handleUploadSuccess = async (data) => {
     const newPdfId = 'pdf_' + Date.now();
+    
+    // Convert blob to base64 for storage
+    let fileData = null;
+    if (data.fileBlob) {
+      try {
+        const response = await fetch(data.fileBlob);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        fileData = await new Promise((resolve) => {
+          reader.onloadend = () => {
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+          };
+          reader.readAsDataURL(blob);
+        });
+      } catch (error) {
+        console.error('Error converting PDF to base64:', error);
+      }
+    }
+    
     const newPdf = {
       id: newPdfId,
       fileName: data.fileName,
       fileBlob: data.fileBlob,
+      fileData: fileData, // Store base64 for persistence
       fileUrl: data.fileUrl,
       jobId: data.jobId,
       extractedText: data.extractedText,
@@ -410,10 +457,10 @@ function App() {
           <button
             onClick={() => setSidebarOpen(true)}
             style={{
-              position: 'absolute',
+              position: 'fixed',
               top: '20px',
               left: '20px',
-              zIndex: 100,
+              zIndex: 1000,
               background: 'linear-gradient(135deg, #ff7f00 0%, #ff5500 100%)',
               border: 'none',
               borderRadius: '8px',
