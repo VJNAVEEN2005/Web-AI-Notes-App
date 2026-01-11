@@ -12,6 +12,7 @@ import {
 import PDFUploader from './components/PDFUploader';
 import PDFViewer from './components/PDFViewer';
 import ChatInterface from './components/ChatInterface';
+import VectorDB from './services/vectorDB';
 import './App.css';
 
 const API_BASE_URL = 'https://naveenvj-askmypdf-backend.hf.space';
@@ -26,6 +27,7 @@ function App() {
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [activeView, setActiveView] = useState('chat'); // 'chat' or 'pdf'
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [vectorDBs, setVectorDBs] = useState({}); // Store vectorDB instances by pdfId
 
   // Load data from localStorage on mount
   useEffect(() => {
@@ -54,6 +56,18 @@ function App() {
           return pdf;
         });
         setPdfs(pdfsWithBlobs);
+        
+        // Restore vectorDB instances
+        pdfsWithBlobs.forEach(async (pdf) => {
+          if (pdf.vectorDBId) {
+            const vectorDB = new VectorDB(pdf.vectorDBId);
+            await vectorDB.initialize();
+            setVectorDBs(prev => ({
+              ...prev,
+              [pdf.id]: vectorDB
+            }));
+          }
+        });
       } catch (error) {
         console.error('Error loading PDFs:', error);
       }
@@ -116,6 +130,20 @@ function App() {
   const currentChat = chats.find(chat => chat.id === currentChatId);
 
   const handleUploadSuccess = async (data) => {
+    // Check if this is an update for existing PDF (vectorDB ready)
+    if (data.vectorDBReady && data.vectorDB) {
+      const existingPdf = pdfs.find(p => p.vectorDBId === data.pdfId);
+      if (existingPdf) {
+        console.log('Vector DB ready for existing PDF:', existingPdf.id);
+        setVectorDBs(prev => ({
+          ...prev,
+          [existingPdf.id]: data.vectorDB
+        }));
+        return;
+      }
+    }
+    
+    // New PDF upload
     const newPdfId = 'pdf_' + Date.now();
     
     // Convert blob to base64 for storage
@@ -145,11 +173,22 @@ function App() {
       fileUrl: data.fileUrl,
       jobId: data.jobId,
       extractedText: data.extractedText,
-      uploadedAt: new Date().toISOString()
+      uploadedAt: new Date().toISOString(),
+      vectorDBId: data.pdfId // Store the vectorDB ID
     };
 
+    console.log('Adding new PDF:', newPdf.fileName);
     setPdfs(prev => [...prev, newPdf]);
     setCurrentPdfId(newPdfId);
+    
+    // Store vectorDB instance if ready
+    if (data.vectorDB) {
+      console.log('Vector DB already ready, storing...');
+      setVectorDBs(prev => ({
+        ...prev,
+        [newPdfId]: data.vectorDB
+      }));
+    }
     
     // Create a new chat for this PDF
     const newChatId = 'chat_' + Date.now();
@@ -161,6 +200,7 @@ function App() {
       createdAt: new Date().toISOString()
     };
     
+    console.log('Creating new chat:', newChat.title);
     setChats(prev => [...prev, newChat]);
     setCurrentChatId(newChatId);
     setCurrentPage(1);
@@ -227,7 +267,17 @@ function App() {
     }
   };
 
-  const handleDeletePdf = (pdfId) => {
+  const handleDeletePdf = async (pdfId) => {
+    // Clean up vectorDB if exists
+    if (vectorDBs[pdfId]) {
+      await vectorDBs[pdfId].clear();
+      setVectorDBs(prev => {
+        const newDBs = { ...prev };
+        delete newDBs[pdfId];
+        return newDBs;
+      });
+    }
+    
     // Delete PDF
     setPdfs(prev => prev.filter(p => p.id !== pdfId));
     
@@ -549,6 +599,7 @@ function App() {
             onPageClick={handlePageClick}
             apiKey={apiKey}
             onUpdateMessages={(messages) => updateChatMessages(currentChat.id, messages)}
+            vectorDB={vectorDBs[currentPdfId]}
           />
         ) : activeView === 'pdf' && currentPdf ? (
           <div style={{flex: 1, overflow: 'auto', padding: '20px'}}>

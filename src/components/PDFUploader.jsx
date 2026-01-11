@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCloudUploadAlt, faFilePdf, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
+import VectorDB from '../services/vectorDB';
 
 const PDFUploader = ({ onUploadSuccess, apiBaseUrl }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -24,7 +25,23 @@ const PDFUploader = ({ onUploadSuccess, apiBaseUrl }) => {
 
   const pollStatus = async (jobId, fileBlob, fileUrl) => {
     try {
-      const response = await axios.get(`${apiBaseUrl}/status/${jobId}`);
+      const response = await axios.get(`${apiBaseUrl}/status/${jobId}`, {
+        headers: {
+          'Accept': 'application/json'
+        },
+        validateStatus: function (status) {
+          return status < 500; // Accept any status code less than 500
+        }
+      });
+      
+      // Check if response is actually JSON
+      const contentType = response.headers['content-type'];
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('Non-JSON response received, retrying...', response.data);
+        setTimeout(() => pollStatus(jobId, fileBlob, fileUrl), 2000);
+        return;
+      }
+
       const data = response.data;
 
       if (data.state === 'waiting') {
@@ -36,28 +53,69 @@ const PDFUploader = ({ onUploadSuccess, apiBaseUrl }) => {
         setTimeout(() => pollStatus(jobId, fileBlob, fileUrl), 500);
       } else if (data.state === 'done') {
         setProgress(100);
-        setProcessing(false);
-        setUploading(false);
         
         if (data.result && !data.result.error) {
+          const pdfId = `pdf_${jobId}`;
+          
+          // Store PDF immediately
+          setProcessing(false);
+          setUploading(false);
+          
           onUploadSuccess({
             jobId,
             extractedText: data.result,
             fileName: selectedFile.name,
             fileBlob: fileBlob,
-            fileUrl: fileUrl
+            fileUrl: fileUrl,
+            pdfId: pdfId,
+            vectorDBInitializing: true
           });
+          
           setSelectedFile(null);
           setJobId(null);
           setProgress(0);
+          
+          // Process vector DB in background (non-blocking)
+          (async () => {
+            try {
+              console.log('Initializing vector DB for:', pdfId);
+              const vectorDB = new VectorDB(pdfId);
+              await vectorDB.initialize();
+              console.log('Vector DB initialized, adding pages...');
+              await vectorDB.addPages(data.result.pages);
+              console.log('Vector DB ready with', vectorDB.chunks.length, 'chunks');
+              
+              // Notify parent that vectorDB is ready
+              onUploadSuccess({
+                jobId,
+                extractedText: data.result,
+                fileName: selectedFile.name,
+                fileBlob: fileBlob,
+                fileUrl: fileUrl,
+                vectorDB: vectorDB,
+                pdfId: pdfId,
+                vectorDBReady: true
+              });
+            } catch (err) {
+              console.error('Error initializing vector DB:', err);
+            }
+          })();
         } else {
           setError(data.result?.error || 'Processing failed');
+          setProcessing(false);
+          setUploading(false);
         }
       }
     } catch (err) {
-      setError('Failed to check status: ' + err.message);
-      setProcessing(false);
-      setUploading(false);
+      // Check if it's a JSON parsing error
+      if (err.message.includes('JSON') || err.message.includes('Unexpected token')) {
+        console.warn('JSON parsing error, retrying...', err);
+        setTimeout(() => pollStatus(jobId, fileBlob, fileUrl), 2000);
+      } else {
+        setError('Failed to check status: ' + err.message);
+        setProcessing(false);
+        setUploading(false);
+      }
     }
   };
 

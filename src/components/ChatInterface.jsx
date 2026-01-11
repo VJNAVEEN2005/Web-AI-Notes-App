@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-const ChatInterface = ({ chat, extractedText, onPageClick, apiKey, onUpdateMessages }) => {
+const ChatInterface = ({ chat, extractedText, onPageClick, apiKey, onUpdateMessages, vectorDB }) => {
   const [messages, setMessages] = useState(chat?.messages || []);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -102,18 +102,36 @@ const ChatInterface = ({ chat, extractedText, onPageClick, apiKey, onUpdateMessa
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
       
-      const context = buildContext();
-      const prompt = `You are a helpful AI assistant analyzing a PDF document. Here is the complete text from the document with page numbers:
+      let context = '';
+      
+      // Use RAG if vectorDB is available
+      if (vectorDB) {
+        // Retrieve relevant chunks using vector similarity search
+        const searchResults = await vectorDB.search(userMessage, 5);
+        
+        // Build context from retrieved chunks
+        context = searchResults
+          .map((result, index) => {
+            const chunk = result.chunk;
+            return `[Relevant Excerpt ${index + 1} from Page ${chunk.pageNumber}]\n${chunk.text}`;
+          })
+          .join('\n\n---\n\n');
+      } else {
+        // Fallback to full context if no vector DB
+        context = buildContext();
+      }
+      
+      const prompt = `You are a helpful AI assistant analyzing a PDF document. Here are the most relevant excerpts from the document:
 
 ${context}
 
 User Question: ${userMessage}
 
 Instructions:
-- Answer the question based ONLY on the provided document text
+- Answer the question based ONLY on the provided excerpts
 - Always mention the specific page number(s) where you found the information (e.g., "According to Page 3...")
 - If the answer spans multiple pages, mention all relevant pages
-- If the information is not in the document, say so clearly
+- If the information is not in the excerpts, say so clearly
 - Be concise but thorough
 - Format your response naturally, mentioning page numbers inline
 
