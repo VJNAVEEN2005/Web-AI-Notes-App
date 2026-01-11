@@ -14,6 +14,7 @@ import PDFViewer from './components/PDFViewer';
 import ChatInterface from './components/ChatInterface';
 import VectorDB from './services/vectorDB';
 import './App.css';
+import localforage from 'localforage';
 
 const API_BASE_URL = 'https://naveenvj-askmypdf-backend.hf.space';
 
@@ -28,6 +29,13 @@ function App() {
   const [activeView, setActiveView] = useState('chat'); // 'chat' or 'pdf'
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [vectorDBs, setVectorDBs] = useState({}); // Store vectorDB instances by pdfId
+
+  useEffect(() => {
+  // Check what's stored
+  localforage.keys().then(keys => {
+    console.log('All stored keys:', keys);
+  });
+}, []);
 
   // Load data from localStorage on mount
   useEffect(() => {
